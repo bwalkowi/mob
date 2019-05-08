@@ -10,23 +10,34 @@ import React, {Component} from 'react';
 import {Platform, StyleSheet, Text, View} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 
-const instructions = Platform.select({
-  ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
-  android:
-    'Double tap R on your keyboard to reload,\n' +
-    'Shake or press menu button for dev menu',
-});
 
 type Props = {};
 export default class App extends Component<Props> {
   constructor() {
     super()
     this.manager = new BleManager()
-    this.state = {info: "QWE"}
+    this.state = {info: "", values: {}}
+    this.prefixUUID = "0000BEA"
+    this.suffixUUID = "-1212-EFDE-1523-785FEF13D123"
+    this.sensors = {
+      0: "Temperatura",
+      1: "Wilgotność",
+      2: "Jasność",
+      3: "Ciśnienie",
+      4: "Prędkość wiatru"
+    }
   }
 
   info(message) {
     this.setState({info: message})
+  }
+
+  error(message) {
+    this.setState({info: "ERROR: " + message})
+  }
+
+  updateValue(key, value) {
+    this.setState({values: {...this.state.values, [key]: value}})
   }
 
   componentWillMount() {
@@ -37,30 +48,37 @@ export default class App extends Component<Props> {
     } else {
       this.startScan()
     }
+    this.info("Scanning...")
   }
 
   startScan() {
     this.manager.startDeviceScan(null,
                                  null, (error, device) => {
-      this.info("Scanning...")
       console.log(device)
 
+      // should be after if(error)
+      this.updateValue(0, 111)
+
       if (error) {
-//        this.info(error.message)
+        this.error(error.message)
         return
       }
 
-      this.info("Get: " + device.manufacturerData)
+      data = device.manufacturerData
+      this.info("Got: " + data)
     });
   }
 
   render() {
     return (
       <View style={styles.container}>
-        <Text>{this.state.info}</Text>
         <Text style={styles.welcome}>Welcome to React Native!</Text>
-        <Text style={styles.instructions}>To get started, edit App.js</Text>
-        <Text style={styles.instructions}>{instructions}</Text>
+        <Text>{this.state.info}</Text>
+        {Object.keys(this.sensors).map((key) => {
+          return <Text key={key}>
+                   {this.sensors[key] + ": " + (this.state.values[key] || "-")}
+                 </Text>
+        })}
       </View>
     );
   }
