@@ -46,14 +46,14 @@ export default class App extends Component<Props> {
       console.log(device)
 
       if (error) {
-        this.info(error.message)
+//        this.info(error.message)
         return
       }
 
       this.info("Get: " + device.manufacturerData)
     });
   }
-  
+
   render() {
     return (
       <View style={styles.container}>
