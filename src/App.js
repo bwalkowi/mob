@@ -17,8 +17,13 @@ export default class App extends Component<Props> {
     super()
     this.manager = new BleManager()
     this.state = {info: "", values: {}}
-    this.prefixUUID = "0000BEA"
-    this.suffixUUID = "-1212-EFDE-1523-785FEF13D123"
+
+    this.serviceUUID = "0000ABCE-1212-EFDE-1523-785FEF13D123"
+    this.sonsorSelectorCharacteristicUUID = "0000BEA0-1212-EFDE-1523-785FEF13D123"
+    this.startRangeCharacteristicUUID = "0000BEA1-1212-EFDE-1523-785FEF13D123"
+    this.endRangeCharacteristicUUID = "0000BEA2-1212-EFDE-1523-785FEF13D123"
+    this.historicalDataCharacteristicUUID = "0000BEA3-1212-EFDE-1523-785FEF13D123"
+ 
     this.sensors = {
       0: "Temperatura",
       1: "Wilgotność",
@@ -52,7 +57,7 @@ export default class App extends Component<Props> {
   }
 
   startScan() {
-    this.manager.startDeviceScan(null,
+    this.manager.startDeviceScan([this.serviceUUID],
                                  null, (error, device) => {
       console.log(device)
 
@@ -61,6 +66,7 @@ export default class App extends Component<Props> {
 
       if (error) {
         this.error(error.message)
+        this.startScan()
         return
       }
 
