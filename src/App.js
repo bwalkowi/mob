@@ -7,7 +7,7 @@
  */
 
 import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View} from 'react-native';
+import {Platform, StyleSheet, Div, Text, View} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 
 
@@ -19,18 +19,21 @@ export default class App extends Component<Props> {
     this.state = {info: "", values: {}}
 
     this.serviceUUID = "0000ABCE-1212-EFDE-1523-785FEF13D123"
-    this.sonsorSelectorCharacteristicUUID = "0000BEA0-1212-EFDE-1523-785FEF13D123"
+    this.sensorSelectorCharacteristicUUID = "0000BEA0-1212-EFDE-1523-785FEF13D123"
     this.startRangeCharacteristicUUID = "0000BEA1-1212-EFDE-1523-785FEF13D123"
     this.endRangeCharacteristicUUID = "0000BEA2-1212-EFDE-1523-785FEF13D123"
     this.historicalDataCharacteristicUUID = "0000BEA3-1212-EFDE-1523-785FEF13D123"
- 
+
     this.sensors = {
-      0: "Temperatura",
-      1: "Wilgotność",
-      2: "Jasność",
-      3: "Ciśnienie",
-      4: "Prędkość wiatru"
+      1: {name: "SHT31", measurments: ["Temperatura", "Wilgotność"]},
+      3: {name: "TSL2561", measurments: ["Jasność", "Jasność [ir]"]},
+      4: {name: "BME280", measurments: ["Temperatura", "Wilgotność", "Ciśnienie"]},
+      5: {name: "MLX90614", measurments: ["Temperatura obiektu", "Temperatura otoczenia"]},
+      6: {name: "Capsense", measurments: ["Przewodność elektryczna gleby"]},
+      7: {name: "EC", measurments: ["?"]},
+      8: {name: "WS1080", measurments: ["Prędkość wiatru", "Opady", "Kierunek wiatru"]}
     }
+
   }
 
   info(message) {
@@ -62,7 +65,7 @@ export default class App extends Component<Props> {
       console.log(device)
 
       // should be after if(error)
-      this.updateValue(0, 111)
+      this.updateValue("SHT31", [Math.floor(Math.random() * 100) + 1, Math.floor(Math.random() * 100) + 1])
 
       if (error) {
         this.error(error.message)
@@ -80,14 +83,18 @@ export default class App extends Component<Props> {
       <View style={styles.container}>
         <Text style={styles.welcome}>Welcome to React Native!</Text>
         <Text>{this.state.info}</Text>
-        {Object.keys(this.sensors).map((key) => {
-          return <Text key={key}>
-                   {this.sensors[key] + ": " + (this.state.values[key] || "-")}
-                 </Text>
+        {Object.values(this.sensors).map((sensor) => {
+            return <View key={sensor.name}>
+                     <Text>{sensor.name + ":"}</Text>
+                     {sensor.measurments.map((item, idx) => {
+                         return <Text>{"   " + item + ": " + (this.state.values[sensor.name] ? this.state.values[sensor.name][idx] : "-")}</Text>
+                     })}
+                   </View>
         })}
       </View>
     );
   }
+
 }
 
 const styles = StyleSheet.create({
