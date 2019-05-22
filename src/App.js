@@ -9,7 +9,30 @@
 import React, {Component} from 'react';
 import {Platform, StyleSheet, Div, Text, View} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
+import {PermissionsAndroid} from 'react-native';
 
+async function requestPermissions() {
+  try {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      {
+        title: 'BT Permission',
+        message:
+          'Gimmie BT',
+        buttonNeutral: 'Ask Me Later',
+        buttonNegative: 'Cancel',
+        buttonPositive: 'OK',
+      },
+    );
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log('You can use the location');
+    } else {
+      console.log('Coarse location permission denied');
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+}
 
 type Props = {};
 export default class App extends Component<Props> {
@@ -54,6 +77,7 @@ export default class App extends Component<Props> {
         if (state === 'PoweredOn') this.startScan()
       })
     } else {
+      requestPermissions()
       this.startScan()
     }
     this.info("Scanning...")
