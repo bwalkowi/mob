@@ -10,6 +10,7 @@ import React, {Component} from 'react';
 import {Platform, StyleSheet, Div, Text, View, Picker, SectionList} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import {PermissionsAndroid} from 'react-native';
+import {decode} from 'base64-arraybuffer';
 
 async function requestPermissions() {
   try {
@@ -72,10 +73,6 @@ export default class App extends Component<Props> {
     this.setState({info: "ERROR: " + message})
   }
 
-  updateMeasurments(key, value) {
-    this.setState({measurments: {...this.state.measurments, [key]: value}})
-  }
-
   componentWillMount() {
     if (Platform.OS === 'ios') {
       this.manager.onStateChange((state) => {
@@ -106,13 +103,32 @@ export default class App extends Component<Props> {
 
         if(device.id == this.state.selectedDevice){
           data = device.manufacturerData
-          this.info("Got: " + data)
-
-          this.updateMeasurments("SHT31", [Math.floor(Math.random() * 100) + 1, Math.floor(Math.random() * 100) + 1])
+//           this.info("Got: " + this.decodeMeasurments(data))
+          this.setState({measurments: this.decodeMeasurments(data)})
         }
       }
     });
   }
+
+  decodeMeasurments(encodedMeasurments){
+    buffer = decode(encodedMeasurments)
+    bytes = new Int8Array(buffer)
+
+    idx = 3  // first 3 bytes are irrelevant
+    decodedMeasurments = {}
+    while(idx < buffer.byteLength){
+      sensor_id = bytes[idx++]
+      next_idx = idx + 2*this.sensors[sensor_id].measurments.length
+      decodedMeasurments[sensor_id] = new Int16Array(buffer.slice(idx, next_idx))
+      idx = next_idx
+    }
+
+    return decodedMeasurments
+  }
+
+//   decodeMeasurments2(q){
+//     return Array.prototype.map.call(new Uint8Array(decode(q)), x => ('00' + x.toString(16)).slice(-2)).join('');
+//   }
 
   render() {
     return (
@@ -134,9 +150,11 @@ export default class App extends Component<Props> {
         <Text>{this.state.info}</Text>
         <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurments</Text>
         <SectionList
-          sections={Object.values(this.sensors).map((sensor) => {
+          sections={Object.keys(this.state.measurments).map((sensor_id) => {
+            sensor = this.sensors[sensor_id]
+            measurments = this.state.measurments[sensor_id]
             return {title: sensor.name, data: sensor.measurments.map((item, idx) => {
-              return item + ": " + (this.state.measurments[sensor.name] ? this.state.measurments[sensor.name][idx] : "-")
+              return item + ": " + measurments[idx]
             })}
           })}
           renderItem={({item}) => <Text style={styles.item}>{item}</Text>}
@@ -146,7 +164,6 @@ export default class App extends Component<Props> {
       </View>
     );
   }
-
 }
 
 
