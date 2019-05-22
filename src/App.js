@@ -7,7 +7,7 @@
  */
 
 import React, {Component} from 'react';
-import {Platform, StyleSheet, Div, Text, View, Picker} from 'react-native';
+import {Platform, StyleSheet, Div, Text, View, Picker, SectionList} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import {PermissionsAndroid} from 'react-native';
 
@@ -132,14 +132,17 @@ export default class App extends Component<Props> {
           </Picker>
         </View>
         <Text>{this.state.info}</Text>
-        {Object.values(this.sensors).map((sensor) => {
-            return <View key={sensor.name}>
-                     <Text>{sensor.name + ":"}</Text>
-                     {sensor.measurments.map((item, idx) => {
-                         return <Text>{"   " + item + ": " + (this.state.measurments[sensor.name] ? this.state.measurments[sensor.name][idx] : "-")}</Text>
-                     })}
-                   </View>
-        })}
+        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurments</Text>
+        <SectionList
+          sections={Object.values(this.sensors).map((sensor) => {
+            return {title: sensor.name, data: sensor.measurments.map((item, idx) => {
+              return item + ": " + (this.state.measurments[sensor.name] ? this.state.measurments[sensor.name][idx] : "-")
+            })}
+          })}
+          renderItem={({item}) => <Text style={styles.item}>{item}</Text>}
+          renderSectionHeader={({section}) => <Text style={styles.sectionHeader}>{section.title}</Text>}
+          keyExtractor={(item, index) => index}
+        />
       </View>
     );
   }
@@ -171,9 +174,18 @@ const styles = StyleSheet.create({
     width: 180,
     justifyContent: 'center'
   },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
+  sectionHeader: {
+    paddingTop: 2,
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingBottom: 2,
+    fontSize: 14,
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(247,247,247,1.0)',
+  },
+  item: {
+    padding: 10,
+    fontSize: 18,
+    height: 44,
   },
 });
