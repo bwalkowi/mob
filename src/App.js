@@ -7,7 +7,7 @@
  */
 
 import React, {Component} from 'react';
-import {Platform, StyleSheet, Div, Text, View, Picker, SectionList} from 'react-native';
+import {Platform, StyleSheet, Div, Text, View, Picker, SectionList, Button} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import {PermissionsAndroid} from 'react-native';
 import {decode} from 'base64-arraybuffer';
@@ -45,6 +45,7 @@ export default class App extends Component<Props> {
       foundDevices: [],
       selectedDevice: null,
       measurments: {}, 
+      historicalData: []
     }
 
     this.serviceUUID = "0000ABCE-1212-EFDE-1523-785FEF13D123"
@@ -52,6 +53,7 @@ export default class App extends Component<Props> {
     this.startRangeCharacteristicUUID = "0000BEA1-1212-EFDE-1523-785FEF13D123"
     this.endRangeCharacteristicUUID = "0000BEA2-1212-EFDE-1523-785FEF13D123"
     this.historicalDataCharacteristicUUID = "0000BEA3-1212-EFDE-1523-785FEF13D123"
+    this.getHistory = false
 
     this.sensors = {
       1: {name: "SHT31", measurments: ["Temperatura", "Wilgotność"]},
@@ -102,9 +104,9 @@ export default class App extends Component<Props> {
         }
 
         if(device.id == this.state.selectedDevice){
-          data = device.manufacturerData
-//           this.info("Got: " + this.decodeMeasurments(data))
-          this.setState({measurments: this.decodeMeasurments(data)})
+          this.setState({measurments: this.decodeMeasurments(device.manufacturerData)})
+          if(this.getHistory)
+            this.getHistoricalData(device)
         }
       }
     });
@@ -126,14 +128,56 @@ export default class App extends Component<Props> {
     return decodedMeasurments
   }
 
-//   decodeMeasurments2(q){
-//     return Array.prototype.map.call(new Uint8Array(decode(q)), x => ('00' + x.toString(16)).slice(-2)).join('');
-//   }
+  getHistoricalData(device){
+    this.getHistory = false
+    this.manager.stopDeviceScan()
+    device.connect()
+      .then((device) => {
+        this.info("Discovering services and characteristics")
+        return device.discoverAllServicesAndCharacteristics()
+      })
+      .then((device) => {
+        this.info("Setting notifications")
+        return this.setupNotifications(device)
+      })
+      .then(() => {
+        this.info("Listening...")
+      }, (error) => {
+        this.error(error.message)
+        this.startScan()
+      })            
+  }
+
+  async setupNotifications(device) {
+    for (const id in this.sensors) {
+      await device.writeCharacteristicWithResponseForService(
+        this.serviceUUID, this.startRangeCharacteristicUUID, "AAg=" /* \x00\x08 in hex */
+      )
+      await device.writeCharacteristicWithResponseForService(
+        this.serviceUUID, this.endRangeCharacteristicUUID, "AAA=" /* \x00\x00 in hex */
+      )
+      await device.writeCharacteristicWithResponseForService(
+        this.serviceUUID, this.sensorSelectorCharacteristicUUID, "AwA=" /* \x03\x00 in hex */
+      )
+
+      device.monitorCharacteristicForService(this.serviceUUID, this.historicalDataCharacteristicUUID, (error, characteristic) => {
+        if (error) {
+          this.error(error.message)
+          this.startScan()
+          return
+        }
+        this.setState({historicalData: this.state.historicalData.concat(characteristic.value)})
+        if(characteristic.value.length < 20)
+          this.startScan()
+      })
+    }
+  }
 
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>Welcome to React Native!</Text>
+        <Text style={styles.welcome}>KWIATKOCZUJNIK</Text>
+        <Text style={styles.welcome}>{this.state.info}</Text>
         <View style={styles.pickerContainer}>
           <Text style={{fontSize: 17, margin: 10}}>Selected device: </Text>
           <Picker
@@ -147,8 +191,7 @@ export default class App extends Component<Props> {
             })}
           </Picker>
         </View>
-        <Text>{this.state.info}</Text>
-        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurments</Text>
+        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>{Object.keys(this.state.measurments).length === 0 ? "Gathering measurments ..." : "Measurments"}</Text>
         <SectionList
           sections={Object.keys(this.state.measurments).map((sensor_id) => {
             sensor = this.sensors[sensor_id]
@@ -161,6 +204,13 @@ export default class App extends Component<Props> {
           renderSectionHeader={({section}) => <Text style={styles.sectionHeader}>{section.title}</Text>}
           keyExtractor={(item, index) => index}
         />
+        <Button
+          onPress={() => this.getHistory = true}
+          title="History"
+          color="#841584"
+          accessibilityLabel="Learn more about this purple button"
+        />
+        <Text style={styles.welcome}>{"Historical data: " + this.state.historicalData || "-"}</Text>
       </View>
     );
   }
