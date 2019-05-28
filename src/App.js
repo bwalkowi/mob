@@ -42,7 +42,7 @@ export default class App extends Component<Props> {
     this.manager = new BleManager()
     this.state = {
       info: "", 
-      foundDevices: [],
+      foundDevices: {},
       selectedDevice: null,
       measurments: {}, 
       historicalData: []
@@ -53,7 +53,6 @@ export default class App extends Component<Props> {
     this.startRangeCharacteristicUUID = "0000BEA1-1212-EFDE-1523-785FEF13D123"
     this.endRangeCharacteristicUUID = "0000BEA2-1212-EFDE-1523-785FEF13D123"
     this.historicalDataCharacteristicUUID = "0000BEA3-1212-EFDE-1523-785FEF13D123"
-    this.getHistory = false
 
     this.sensors = {
       1: {name: "SHT31", measurments: ["Temperatura", "Wilgotność"]},
@@ -84,7 +83,16 @@ export default class App extends Component<Props> {
       requestPermissions()
       this.startScan()
     }
+
+    this._interval = setInterval(() => {
+      // TODO clear expired diveces
+    }, 5000);
     this.info("Scanning...")
+  }
+
+  
+  componentWillUnmount() {
+    clearInterval(this._interval);
   }
 
   startScan() {
@@ -98,16 +106,9 @@ export default class App extends Component<Props> {
       if(device.name == "DigitalTherm"){
         console.log(device)
 
-        if(this.state.foundDevices.indexOf(device.id) == -1){
-          this.setState({foundDevices: this.state.foundDevices.concat(device.id)})
-          return
-        }
-
-        if(device.id == this.state.selectedDevice){
+        this.setState({foundDevices: {...this.state.foundDevices, [device.id]: {device: device, timestamp: Date.now()}}})
+        if(device.id == this.state.selectedDevice)
           this.setState({measurments: this.decodeMeasurments(device.manufacturerData)})
-          if(this.getHistory)
-            this.getHistoricalData(device)
-        }
       }
     });
   }
@@ -129,7 +130,6 @@ export default class App extends Component<Props> {
   }
 
   getHistoricalData(device){
-    this.getHistory = false
     this.manager.stopDeviceScan()
     device.connect()
       .then((device) => {
@@ -176,22 +176,25 @@ export default class App extends Component<Props> {
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>KWIATKOCZUJNIK</Text>
         <Text style={styles.welcome}>{this.state.info}</Text>
         <View style={styles.pickerContainer}>
           <Text style={{fontSize: 17, margin: 10}}>Selected device: </Text>
           <Picker
             selectedValue={this.state.selectedDevice || "None"}
             style={styles.picker}
-            onValueChange={(itemValue, itemIndex) =>
-              this.setState({selectedDevice: itemValue, values: {}})
-            }>
-            {this.state.foundDevices.map((mac_id) => {
+            onValueChange={(itemValue, itemIndex) => {
+              dev = this.state.foundDevices[itemValue]
+              this.setState({
+                selectedDevice: itemValue,
+                measurments: this.decodeMeasurments(dev.device.manufacturerData)
+              })
+            }}>
+            {Object.keys(this.state.foundDevices).map((mac_id) => {
               return <Picker.Item label={mac_id} value={mac_id} />
             })}
           </Picker>
         </View>
-        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>{Object.keys(this.state.measurments).length === 0 ? "Gathering measurments ..." : "Measurments"}</Text>
+        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurments!!!!</Text>
         <SectionList
           sections={Object.keys(this.state.measurments).map((sensor_id) => {
             sensor = this.sensors[sensor_id]
@@ -205,12 +208,16 @@ export default class App extends Component<Props> {
           keyExtractor={(item, index) => index}
         />
         <Button
-          onPress={() => this.getHistory = true}
+          onPress={() => {
+            dev = this.state.foundDevices[this.state.selectedDevice]
+            this.getHistoricalData(dev.device)
+          }}
+          disabled={this.state.selectedDevice == null}
           title="History"
           color="#841584"
-          accessibilityLabel="Learn more about this purple button"
+          accessibilityLabel="Show history"
         />
-        <Text style={styles.welcome}>{"Historical data: " + this.state.historicalData || "-"}</Text>
+        <Text style={styles.welcome}>{"Historical data: " + this.state.historicalData}</Text>
       </View>
     );
   }
