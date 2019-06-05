@@ -10,8 +10,8 @@ export const deviceInfo = {
       3: {name: "TSL2561", measurments: ["Jasność", "Jasność [ir]"]},
       4: {name: "BME280", measurments: ["Temperatura", "Wilgotność", "Ciśnienie"]},
       5: {name: "MLX90614", measurments: ["Temperatura obiektu", "Temperatura otoczenia"]},
-      6: {name: "Capsense", measurments: ["Przewodność elektryczna gleby"]},
-      7: {name: "EC", measurments: ["?"]},
+      6: {name: "Capsense", measurments: ["Wilgotność gleby"]},
+      7: {name: "EC", measurments: ["Przewodniość elektryczna gleby"]},
       8: {name: "WS1080", measurments: ["Prędkość wiatru", "Opady", "Kierunek wiatru"]}
     }
 }
