@@ -91,10 +91,17 @@ export default class ScanScreen extends Component {
       }
 
       if(device.name == "DigitalTherm"){
-        console.log(device)
+        console.log('Found device: ' + device.id)
 
-        this.setState({foundDevices: {...this.state.foundDevices, [device.id]: {device: device, timestamp: Date.now()}}})
-        if(device.id == this.state.selectedDevice)
+        this.setState((state, props) => ({
+          foundDevices: {
+            ...state.foundDevices,
+            [device.id]: {
+              device: device, timestamp: Date.now()
+            }
+          }
+        }));
+        if(device.id === this.state.selectedDevice)
           this.setState({measurments: this.decodeMeasurments(device.manufacturerData)})
       }
     });
@@ -116,49 +123,6 @@ export default class ScanScreen extends Component {
     return decodedMeasurments
   }
 
-  getHistoricalData(device){
-    this.manager.stopDeviceScan()
-    device.connect()
-      .then((device) => {
-        this.info("Discovering services and characteristics")
-        return device.discoverAllServicesAndCharacteristics()
-      })
-      .then((device) => {
-        this.info("Setting notifications")
-        return this.setupNotifications(device)
-      })
-      .then(() => {
-        this.info("Listening...")
-      }, (error) => {
-        this.error(error.message)
-        this.startScan()
-      })            
-  }
-
-  async setupNotifications(device) {
-    for (const id in deviceInfo.sensors) {
-      await device.writeCharacteristicWithResponseForService(
-        deviceInfo.serviceUUID, deviceInfo.startRangeCharacteristicUUID, "AAg=" /* \x00\x08 in hex */
-      )
-      await device.writeCharacteristicWithResponseForService(
-        deviceInfo.serviceUUID, deviceInfo.endRangeCharacteristicUUID, "AAA=" /* \x00\x00 in hex */
-      )
-      await device.writeCharacteristicWithResponseForService(
-        deviceInfo.serviceUUID, deviceInfo.sensorSelectorCharacteristicUUID, "AwA=" /* \x03\x00 in hex */
-      )
-
-      device.monitorCharacteristicForService(deviceInfo.serviceUUID, deviceInfo.historicalDataCharacteristicUUID, (error, characteristic) => {
-        if (error) {
-          this.error(error.message)
-          this.startScan()
-          return
-        }
-        this.setState({historicalData: this.state.historicalData.concat(characteristic.value)})
-        if(characteristic.value.length < 20)
-          this.startScan()
-      })
-    }
-  }
 
   render() {
     return (
@@ -198,7 +162,7 @@ export default class ScanScreen extends Component {
           onPress={() => {
             //dev = this.state.foundDevices[this.state.selectedDevice]
             //this.getHistoricalData(dev.device)
-            this.props.navigation.navigate('History')
+            this.props.navigation.navigate('History', this.state.foundDevices[this.state.selectedDevice])
           }}
           disabled={this.state.selectedDevice == null}
           title="History"
