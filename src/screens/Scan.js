@@ -41,7 +41,7 @@ export default class ScanScreen extends Component {
   static navigationOptions = {
     title: 'Scanning',
   };
-  constructor() {
+  constructor(props) {
     super()
     this.manager = new BleManager()
     this.state = {
@@ -51,6 +51,21 @@ export default class ScanScreen extends Component {
       measurments: {}, 
       historicalData: []
     }
+
+    this.didFocusSub = props.navigation.addListener(
+      'didFocus',
+      payload => {
+        console.log("Start scan");
+        this.startScan();
+      }
+    )
+    this.willBlurSub = props.navigation.addListener(
+      'willBlur',
+      payload => {
+        console.log("Stop scan");
+        this.manager.stopDeviceScan();
+      }
+    )
   }
 
   info(message) {
@@ -77,7 +92,6 @@ export default class ScanScreen extends Component {
     this.info("Scanning...")
   }
 
-  
   componentWillUnmount() {
     clearInterval(this._interval);
   }
@@ -109,14 +123,14 @@ export default class ScanScreen extends Component {
 
   decodeMeasurments(encodedMeasurments){
     buffer = decode(encodedMeasurments)
-    bytes = new Int8Array(buffer)
+    bytes = new Uint8Array(buffer)
 
     idx = 3  // first 3 bytes are irrelevant
     decodedMeasurments = {}
     while(idx < buffer.byteLength){
       sensor_id = bytes[idx++]
       next_idx = idx + 2*deviceInfo.sensors[sensor_id].measurments.length
-      decodedMeasurments[sensor_id] = new Int16Array(buffer.slice(idx, next_idx))
+      decodedMeasurments[sensor_id] = new Uint16Array(buffer.slice(idx, next_idx))
       idx = next_idx
     }
 

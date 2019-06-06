@@ -13,5 +13,11 @@ export const deviceInfo = {
       6: {name: "Capsense", measurments: ["Wilgotność gleby"]},
       7: {name: "EC", measurments: ["Przewodniość elektryczna gleby"]},
       8: {name: "WS1080", measurments: ["Prędkość wiatru", "Opady", "Kierunek wiatru"]}
+    },
+
+    intervals: {
+      SECONDS: 0,
+      MINUTES: 1,
+      HOURS: 2
     }
 }
