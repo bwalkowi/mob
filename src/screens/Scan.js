@@ -174,9 +174,8 @@ export default class ScanScreen extends Component {
         />
         <Button
           onPress={() => {
-            //dev = this.state.foundDevices[this.state.selectedDevice]
-            //this.getHistoricalData(dev.device)
-            this.props.navigation.navigate('History', this.state.foundDevices[this.state.selectedDevice])
+            dev = this.state.foundDevices[this.state.selectedDevice]
+            this.props.navigation.navigate('History', dev)
           }}
           disabled={this.state.selectedDevice == null}
           title="History"
@@ -195,6 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
+    marginBottom: 10
   },
   welcome: {
     fontSize: 20,
