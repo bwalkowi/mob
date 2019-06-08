@@ -10,9 +10,8 @@ import React, {Component} from 'react';
 import {Platform, StyleSheet, Div, Text, View, Picker, SectionList, Button} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import {PermissionsAndroid} from 'react-native';
-import {decode} from 'base64-arraybuffer';
 
-import {deviceInfo} from '../device_info';
+import {devutils} from '../devutils';
 
 async function requestPermissions() {
   try {
@@ -45,10 +44,10 @@ export default class ScanScreen extends Component {
     super()
     this.manager = new BleManager()
     this.state = {
-      info: "", 
+      info: "",
       foundDevices: {},
       selectedDevice: null,
-      measurments: {}, 
+      measurements: {},
       historicalData: []
     }
 
@@ -116,27 +115,10 @@ export default class ScanScreen extends Component {
           }
         }));
         if(device.id === this.state.selectedDevice)
-          this.setState({measurments: this.decodeMeasurments(device.manufacturerData)})
+          this.setState({measurements: devutils.decodeMeasurements(device.manufacturerData)})
       }
     });
   }
-
-  decodeMeasurments(encodedMeasurments){
-    buffer = decode(encodedMeasurments)
-    bytes = new Uint8Array(buffer)
-
-    idx = 3  // first 3 bytes are irrelevant
-    decodedMeasurments = {}
-    while(idx < buffer.byteLength){
-      sensor_id = bytes[idx++]
-      next_idx = idx + 2*deviceInfo.sensors[sensor_id].measurments.length
-      decodedMeasurments[sensor_id] = new Uint16Array(buffer.slice(idx, next_idx))
-      idx = next_idx
-    }
-
-    return decodedMeasurments
-  }
-
 
   render() {
     return (
@@ -151,7 +133,7 @@ export default class ScanScreen extends Component {
               dev = this.state.foundDevices[itemValue]
               this.setState({
                 selectedDevice: itemValue,
-                measurments: this.decodeMeasurments(dev.device.manufacturerData)
+                measurements: devutils.decodeMeasurements(dev.device.manufacturerData)
               })
             }}>
             {Object.keys(this.state.foundDevices).map((mac_id) => {
@@ -159,13 +141,13 @@ export default class ScanScreen extends Component {
             })}
           </Picker>
         </View>
-        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurments!!!!</Text>
+        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurements!!!!</Text>
         <SectionList
-          sections={Object.keys(this.state.measurments).map((sensor_id) => {
-            sensor = deviceInfo.sensors[sensor_id]
-            measurments = this.state.measurments[sensor_id]
-            return {title: sensor.name, data: sensor.measurments.map((item, idx) => {
-              return item + ": " + measurments[idx]
+          sections={Object.keys(this.state.measurements).map((sensor_id) => {
+            sensor = devutils.info.sensors[sensor_id]
+            measurements = this.state.measurements[sensor_id]
+            return {title: sensor.name, data: sensor.measurements.map((item, idx) => {
+              return item + ": " + measurements[idx]
             })}
           })}
           renderItem={({item}) => <Text style={styles.item}>{item}</Text>}
@@ -202,14 +184,14 @@ const styles = StyleSheet.create({
     margin: 10,
   },
   pickerContainer: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'white',
     paddingVertical: 10
   },
   picker: {
-    height: 50, 
+    height: 50,
     width: 180,
     justifyContent: 'center'
   },
