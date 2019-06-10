@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {Platform, StyleSheet, Div, Text, View, Picker, SectionList, Button, Dimensions} from 'react-native';
+import {Platform, StyleSheet, Div, Text, View, Picker, SectionList, Button, TextInput, Dimensions} from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import {encode} from 'base64-arraybuffer';
 import {LineChart} from 'react-native-chart-kit'
@@ -8,6 +8,7 @@ import {devutils} from '../devutils';
 
 // This id allows to cancel subscription on notification
 const TRANSACTION_ID = 'historicalDataTransaction';
+const LOAD_SIZE = 8
 
 export default class HistoryScreen extends Component {
   static navigationOptions = {
@@ -21,7 +22,9 @@ export default class HistoryScreen extends Component {
       historicalData: {},
       sensorId: "3",
       measurement: null,
-      historicalDataAcc: null
+      historicalDataAcc: null,
+      loading: true,
+      toLoad: LOAD_SIZE
     };
 
     this.didFocusSub = props.navigation.addListener(
@@ -47,7 +50,7 @@ export default class HistoryScreen extends Component {
       })
       .then((device) => {
         console.info("Setting notifications")
-        return this.setupNotifications(device)
+        return this.setupNotifications()
       })
       .then(() => {
         console.info("Listening...")
@@ -57,29 +60,34 @@ export default class HistoryScreen extends Component {
   }
 
   async setupNotifications() {
-    // set history start (from 8th entry)
-    await this.device.writeCharacteristicWithResponseForService(
-      devutils.info.serviceUUID, devutils.info.startRangeCharacteristicUUID, encode(Uint8Array.of(0, 8))
+    this.setState({loading: true, historicalData: {}, historicalDataAcc: null});
+    ({device} = this)
+    // set history start
+    await device.writeCharacteristicWithResponseForService(
+      devutils.info.serviceUUID, devutils.info.startRangeCharacteristicUUID, encode(Uint8Array.of(0, this.state.toLoad))
     );
-    // set history stop (most recent entry)
-    await this.device.writeCharacteristicWithResponseForService(
+    // set history stop
+    await device.writeCharacteristicWithResponseForService(
       devutils.info.serviceUUID, devutils.info.endRangeCharacteristicUUID, encode(Uint8Array.of(0, 0))
     )
     // Prepare to receive data
-    this.device.monitorCharacteristicForService(devutils.info.serviceUUID, devutils.info.historicalDataCharacteristicUUID, (error, characteristic) => {
+    device.monitorCharacteristicForService(devutils.info.serviceUUID, devutils.info.historicalDataCharacteristicUUID, (error, characteristic) => {
       if (error) {
         console.log(error.message)
         //TODO recognize not-errors (such as operation cancelled)
         return
       }
+      console.log(characteristic.value);
       this.setState((state, props) => {
-        ({decodedData, acc} = devutils.decodeHistoricalData(characteristic.value, state.sensorId, state.historicalData, state.historicalDataAcc))
-        return {historicalData: decodedData, historicalDataAcc: acc}
+        ({sensorId, historicalData, historicalDataAcc, toLoad} = state);
+        ({decodedData, acc, allDecoded} = devutils.decodeHistoricalData(characteristic.value, sensorId, historicalData, historicalDataAcc, toLoad))
+        return {historicalData: decodedData, historicalDataAcc: acc, loading: !allDecoded}
       })
     }, TRANSACTION_ID);
 
+    console.log("data send")
     // trigger data send
-    await this.device.writeCharacteristicWithResponseForService(
+    await device.writeCharacteristicWithResponseForService(
       devutils.info.serviceUUID,
       devutils.info.sensorSelectorCharacteristicUUID,
       encode(Uint8Array.of(parseInt(this.state.sensorId), devutils.info.intervals.SECONDS))
@@ -102,13 +110,13 @@ export default class HistoryScreen extends Component {
   }
 
   render() {
-    ({sensorId, measurement, historicalData} = this.state)
-    measurement = measurement || devutils.info.sensors[sensorId].measurements[0]
+    let {sensorId, measurement, historicalData, toLoad} = this.state;
+    measurement = measurement || devutils.info.sensors[sensorId].measurements[0];
     console.log(historicalData)
     return (
       <View>
         <Picker selectedValue={this.state.sensorId} onValueChange={(sensorId) => {
-          this.setState({sensorId, historicalData: {}, historicalDataAcc: null});
+          this.setState({sensorId, historicalData: {}, historicalDataAcc: null, toLoad: LOAD_SIZE});
           this.manager.cancelTransaction(TRANSACTION_ID);
           this.setupNotifications();
         }}>
@@ -119,30 +127,47 @@ export default class HistoryScreen extends Component {
         }}>
             {this.getMeasurementsItems(sensorId)}
         </Picker>
+        <View style={{ flexDirection:'row' }}>
+          <Text style={{fontSize: 17, margin: 8}}>
+            Entries:
+          </Text>
+          <TextInput
+            value = {"" + toLoad}
+            keyboardType = 'numeric'
+            onSubmitEditing={() => {
+              this.manager.cancelTransaction(TRANSACTION_ID);
+              this.setupNotifications();
+            }}
+            onChangeText={value => this.setState({toLoad: parseInt(value) || ""})}
+            style={{backgroundColor: "lightgray", width: 40}}
+          />
+        </View>
         {(historicalData[measurement] || []).length > 0 &&
-          <LineChart
-            data={{
-              // labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-              datasets: [{
-                data: historicalData[measurement]
-              }]
-            }}
-            width={Dimensions.get('window').width}
-            height={220}
-            chartConfig={{
-              backgroundColor: 'gray',
-              decimalPlaces: 2, // optional, defaults to 2dp
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              style: {
+          <View>
+            <LineChart
+              data={{
+                labels: [...historicalData[measurement].keys()],
+                datasets: [{
+                  data: historicalData[measurement]
+                }]
+              }}
+              width={Dimensions.get('window').width}
+              height={220}
+              chartConfig={{
+                backgroundColor: 'gray',
+                decimalPlaces: 2, // optional, defaults to 2dp
+                color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                style: {
+                  borderRadius: 16
+                }
+              }}
+              bezier
+              style={{
+                marginVertical: 8,
                 borderRadius: 16
-              }
-            }}
-            bezier
-            style={{
-              marginVertical: 8,
-              borderRadius: 16
-            }}
-        />
+              }}
+          />
+        </View>
       }
       </View>
     )

@@ -40,20 +40,23 @@ const decodeMeasurements = (encodedMeasurements) => {
   return decodedMeasurements
 }
 
-const decodeHistoricalData = (encodedData, sensorId, decodedData, acc) => {
-  console.log(encodedData)
-  acc = acc || new ArrayBuffer()
-  buffer = new Uint8Array([...new Uint8Array(acc), ...new Uint8Array(decode(encodedData))]).buffer
+const decodeHistoricalData = (encodedData, sensorId, decodedData, acc, size) => {
+  let {buffer, mIdx} = acc || {buffer: new ArrayBuffer(), mIdx: 0};
+  buffer = new Uint8Array([...new Uint8Array(buffer), ...new Uint8Array(decode(encodedData))]).buffer
   measurements = info.sensors[sensorId].measurements
-  idx = 0
-  mIdx = 0
+  let idx = 0
+  let allDecoded = false
   while(idx + 2 < buffer.byteLength){
     measurement = measurements[mIdx]
+    if((decodedData[measurement] || []).length == size) {
+      allDecoded = true
+      break
+    }
     decodedData[measurement] = [...(decodedData[measurement] || []), ...(new Uint16Array(buffer.slice(idx, idx+2)))]
     idx = idx + 2
     mIdx = (mIdx + 1)%measurements.length
   }
-  return {decodedData, acc: buffer.slice(idx)}
+  return {decodedData, acc: allDecoded ? null : {buffer: buffer.slice(idx), mIdx}, allDecoded}
 }
 
 export const devutils = {

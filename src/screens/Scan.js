@@ -38,7 +38,7 @@ async function requestPermissions() {
 
 export default class ScanScreen extends Component {
   static navigationOptions = {
-    title: 'Scanning',
+    title: 'Measurements',
   };
   constructor(props) {
     super()
@@ -141,7 +141,6 @@ export default class ScanScreen extends Component {
             })}
           </Picker>
         </View>
-        <Text style={{fontSize: 18, paddingTop: 10, paddingBottom: 10}}>Measurements!!!!</Text>
         <SectionList
           sections={Object.keys(this.state.measurements).map((sensor_id) => {
             sensor = devutils.info.sensors[sensor_id]
