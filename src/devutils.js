@@ -25,15 +25,16 @@ const info = {
 }
 
 const decodeMeasurements = (encodedMeasurements) => {
-  buffer = decode(encodedMeasurements)
-  bytes = new Uint8Array(buffer)
+  console.log("in", [...new Uint8Array(decode(encodedMeasurements))])
+  const buffer = decode(encodedMeasurements)
+  const bytes = new Uint8Array(buffer)
 
-  idx = 3  // first 3 bytes are irrelevant
-  decodedMeasurements = {}
+  let idx = 3  // first 3 bytes are irrelevant
+  let decodedMeasurements = {}
   while(idx < buffer.byteLength){
-    sensorId = bytes[idx++]
-    nextIdx = idx + 2*info.sensors[sensorId].measurements.length
-    decodedMeasurements[sensorId] = new Uint16Array(buffer.slice(idx, nextIdx))
+    const sensorId = bytes[idx++]
+    const nextIdx = idx + 2*info.sensors[sensorId].measurements.length
+    decodedMeasurements[sensorId] = [...new Uint16Array(buffer.slice(idx, nextIdx))].map(x => x/1000)
     idx = nextIdx
   }
 
@@ -41,18 +42,19 @@ const decodeMeasurements = (encodedMeasurements) => {
 }
 
 const decodeHistoricalData = (encodedData, sensorId, decodedData, acc, size) => {
+  console.log("in", [...new Uint8Array(decode(encodedData))])
   let {buffer, mIdx} = acc || {buffer: new ArrayBuffer(), mIdx: 0};
   buffer = new Uint8Array([...new Uint8Array(buffer), ...new Uint8Array(decode(encodedData))]).buffer
   measurements = info.sensors[sensorId].measurements
   let idx = 0
   let allDecoded = false
-  while(idx + 2 < buffer.byteLength){
+  while(idx + 2 <= buffer.byteLength){
     measurement = measurements[mIdx]
     if((decodedData[measurement] || []).length == size) {
       allDecoded = true
       break
     }
-    decodedData[measurement] = [...(decodedData[measurement] || []), ...(new Uint16Array(buffer.slice(idx, idx+2)))]
+    decodedData[measurement] = [...(decodedData[measurement] || []), new DataView(buffer.slice(idx, idx+2)).getUint16(0)/1000]
     idx = idx + 2
     mIdx = (mIdx + 1)%measurements.length
   }

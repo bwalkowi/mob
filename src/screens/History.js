@@ -24,7 +24,8 @@ export default class HistoryScreen extends Component {
       measurement: null,
       historicalDataAcc: null,
       loading: true,
-      toLoad: LOAD_SIZE
+      toLoad: LOAD_SIZE,
+      loadInterval: "SECONDS"
     };
 
     this.didFocusSub = props.navigation.addListener(
@@ -77,7 +78,6 @@ export default class HistoryScreen extends Component {
         //TODO recognize not-errors (such as operation cancelled)
         return
       }
-      console.log(characteristic.value);
       this.setState((state, props) => {
         ({sensorId, historicalData, historicalDataAcc, toLoad} = state);
         ({decodedData, acc, allDecoded} = devutils.decodeHistoricalData(characteristic.value, sensorId, historicalData, historicalDataAcc, toLoad))
@@ -90,7 +90,7 @@ export default class HistoryScreen extends Component {
     await device.writeCharacteristicWithResponseForService(
       devutils.info.serviceUUID,
       devutils.info.sensorSelectorCharacteristicUUID,
-      encode(Uint8Array.of(parseInt(this.state.sensorId), devutils.info.intervals.SECONDS))
+      encode(Uint8Array.of(parseInt(this.state.sensorId), devutils.info.intervals[this.state.loadInterval]))
     )
   }
 
@@ -112,11 +112,10 @@ export default class HistoryScreen extends Component {
   render() {
     let {sensorId, measurement, historicalData, toLoad} = this.state;
     measurement = measurement || devutils.info.sensors[sensorId].measurements[0];
-    console.log(historicalData)
     return (
       <View>
         <Picker selectedValue={this.state.sensorId} onValueChange={(sensorId) => {
-          this.setState({sensorId, historicalData: {}, historicalDataAcc: null, toLoad: LOAD_SIZE});
+          this.setState({sensorId, historicalData: {}, historicalDataAcc: null});
           this.manager.cancelTransaction(TRANSACTION_ID);
           this.setupNotifications();
         }}>
@@ -126,6 +125,13 @@ export default class HistoryScreen extends Component {
           this.setState({measurement});
         }}>
             {this.getMeasurementsItems(sensorId)}
+        </Picker>
+        <Picker selectedValue={this.state.loadInterval} onValueChange={loadInterval => {
+          this.setState({historicalData: {}, historicalDataAcc: null, loadInterval});
+          this.manager.cancelTransaction(TRANSACTION_ID);
+          this.setupNotifications();
+        }}>
+            {Object.keys(devutils.info.intervals).map(i => <Picker.Item label={i.toLowerCase()} value={i} />)}
         </Picker>
         <View style={{ flexDirection:'row' }}>
           <Text style={{fontSize: 17, margin: 8}}>
@@ -146,7 +152,7 @@ export default class HistoryScreen extends Component {
           <View>
             <LineChart
               data={{
-                labels: [...historicalData[measurement].keys()],
+                labels: [...historicalData[measurement].keys()].map(x => -x).reverse(),
                 datasets: [{
                   data: historicalData[measurement]
                 }]
