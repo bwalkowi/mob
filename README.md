@@ -80,6 +80,63 @@ startScan(){
 
 ```
 
+... % TODO coś o łączeniu się
+
+```javascript
+getHistoricalData(){
+  this.device.connect()
+    .then((device) => {
+      console.info("Discovering services and characteristics")
+      return device.discoverAllServicesAndCharacteristics()
+    })
+    .then((device) => {
+      console.info("Setting notifications")
+      return this.setupNotifications()
+    })
+    .then(() => {
+      console.info("Listening...")
+    }, (error) => {
+      console.error(error.message)
+    })
+}
+```
+
+... % TODO coś o charakterystykach i notyfikacjach
+
+```javascript
+async setupNotifications() {
+  ...
+
+  // set history start
+  await device.writeCharacteristicWithResponseForService(
+    devutils.info.serviceUUID, devutils.info.startRangeCharacteristicUUID, encode(Uint8Array.of(0, this.state.toLoad))
+  );
+  // set history stop
+  await device.writeCharacteristicWithResponseForService(
+    devutils.info.serviceUUID, devutils.info.endRangeCharacteristicUUID, encode(Uint8Array.of(0, 0))
+  )
+  // Prepare to receive data
+  device.monitorCharacteristicForService(devutils.info.serviceUUID, devutils.info.historicalDataCharacteristicUUID, (error, characteristic) => {
+    if (error) {
+      console.log(error.message)
+      return
+    }
+    this.setState((state, props) => {
+      ...
+      ({decodedData, acc, allDecoded} = devutils.decodeHistoricalData(characteristic.value, sensorId, historicalData, historicalDataAcc, toLoad))
+      ...
+    })
+  }, TRANSACTION_ID);
+
+  // trigger data send
+  await device.writeCharacteristicWithResponseForService(
+    devutils.info.serviceUUID,
+    devutils.info.sensorSelectorCharacteristicUUID,
+    encode(Uint8Array.of(parseInt(this.state.sensorId), devutils.info.intervals[this.state.loadInterval]))
+  )
+}
+```
+
 ### Wykresy
 ... % TODO coś o libce do wykresów i że dane przychodzą w innej endianness niż przy manufacturerData (i co 30 jest gubiony ...)
 
