@@ -101,7 +101,13 @@ getHistoricalData(){
 }
 ```
 
-... % TODO coś o charakterystykach i notyfikacjach
+Aby odebrać historyczne dane najpierw wpisywany jest, korzystając z 2 i 3 charakterystyki,
+okres czasu (początek i koniec), z którego te dane mają być wysyłane.
+Następnie przygotowując się na odbiór danych rozpoczyna się monitorować 
+4 charakterystykę. Podaje się przy tym callback, który będzie wołany przy odebraniu kolejnych
+pakietów (20B, które są dekodowane i dodawane do wykresów).
+Na koniec korzystając z 1 charakterystyki definiuje się, z którego sensora mają być pobierane dane. 
+Wysyłanie danych następuje zaraz po wpisaniu do tej charakterystyki wybranej wartości.
 
 ```javascript
 async setupNotifications() {
