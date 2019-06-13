@@ -14,8 +14,11 @@ Można również użyć pliku apk przypiętego do Release na GitHubie
 ## Implementacja 
 
 Aplikacja została napisana w technologii `react-native`. 
-
-... % TODO  coś ogólnie o apce, że ma 2 screeny, o przełączaniu między nimi i focusowaniu/montowaniu (`componentDidMount` i `didFocusSub`) - tak żeby pokazać jak się to w reactcie robi
+Składa się z 2 ekranów:
+- `Scan` - ekran, na którym można dokonać wyboru urządzenia 
+z pośród tych wykrytych oraz wyświetlane są bieżące pomiary jego czujników,
+- `History` - erkan, na którym można wybrać czujnik i wyświetlić
+historię jego pomiarów w wybranym zakresie w formie wykresu.
 
 ### BLE
 
@@ -80,7 +83,12 @@ startScan(){
 
 ```
 
-... % TODO coś o łączeniu się
+W celu połączenia się z urządzeniem i pobrania historycznych danych
+zatrzymywany jest skan (w momencie przechodzenia w ekranu `Scan` do `History`). 
+Następnie wywoływana jest funkcja `connect` na instancji `Device` 
+uzyskanej podczas skanowania. Po połączeniu wykrywane są najpierw 
+serwisy i charakterystyki (`discoverAllServicesAndCharacteristics()`).
+Na koniec pobierane są historyczne dane w postaci notyfikacji (`setupNotifications()`).
 
 ```javascript
 getHistoricalData(){
@@ -143,8 +151,14 @@ async setupNotifications() {
 }
 ```
 
+Po odebraniu wszystkich danych i powrocie do widoku pomiarów bieżących
+skan jest rozpoczynany ponownie.
+
 ### Wykresy
-... % TODO coś o libce do wykresów i że dane przychodzą w innej endianness niż przy manufacturerData (i co 30 jest gubiony ...)
+
+Do sporządzenia wykresów wykorzystana została biblioteka [react-native-chart-kit
+](https://github.com/indiespirit/react-native-chart-kit).
+
 
 ## Autorzy
 
